@@ -1,11 +1,12 @@
 #include <iostream>
-#include <cstdlib> // malloc, free
+#include <cstdlib>
 using namespace std;
 
 // Функция для поиска колонок с нулевыми элементами
-int* findZeroColumns(int** &matrix, int rows, int cols, int &zeroCount) {
+int* findZeroColumns(int** matrix, int rows, int cols, int &zeroCount) {
     zeroCount = 0;
     int* zeroCols = (int*)malloc(cols * sizeof(int));
+    if (!zeroCols) return nullptr; // защита от malloc
 
     for (int j = 0; j < cols; ++j) {
         for (int i = 0; i < rows; ++i) {
@@ -16,16 +17,20 @@ int* findZeroColumns(int** &matrix, int rows, int cols, int &zeroCount) {
         }
     }
 
+    if (zeroCount == 0) {
+        free(zeroCols);
+        return nullptr;
+    }
+
     return zeroCols;
 }
 
-// Функция удаления столбцов по индексам
+// Функция удаления столбцов
 void removeColumns(int** &matrix, int &rows, int &cols, int* zeroCols, int zeroCount) {
-    if (zeroCount == 0) return; // если нет столбцов для удаления, выходим
+    if (!zeroCols || zeroCount == 0) return;
 
     int newCols = cols - zeroCount;
     int** newMatrix = (int**)malloc(rows * sizeof(int*));
-
     for (int i = 0; i < rows; ++i) {
         newMatrix[i] = (int*)malloc(newCols * sizeof(int));
         int k = 0;
@@ -37,9 +42,7 @@ void removeColumns(int** &matrix, int &rows, int &cols, int* zeroCols, int zeroC
                     break;
                 }
             }
-            if (!isZeroCol) {
-                newMatrix[i][k++] = matrix[i][j];
-            }
+            if (!isZeroCol) newMatrix[i][k++] = matrix[i][j];
         }
         free(matrix[i]);
     }
@@ -51,21 +54,10 @@ void removeColumns(int** &matrix, int &rows, int &cols, int* zeroCols, int zeroC
 int main() {
     int A, B, C, D;
 
-    // Ввод с проверкой
-    do {
-        cout << "Введите количество строк для добавления (A): ";
-        cin >> A;
-    } while (A < 0);
+    do { cout << "Введите количество строк для добавления (A): "; cin >> A; } while (A < 0);
+    do { cout << "Введите количество столбцов для добавления (B): "; cin >> B; } while (B < 0);
+    cout << "Введите коэффициенты C и D: "; cin >> C >> D;
 
-    do {
-        cout << "Введите количество столбцов для добавления (B): ";
-        cin >> B;
-    } while (B < 0);
-
-    cout << "Введите коэффициенты C и D: ";
-    cin >> C >> D;
-
-    // Создаем 2x2 массив
     int initialRows = 2, initialCols = 2;
     int** matrix = (int**)malloc(initialRows * sizeof(int*));
     for (int i = 0; i < initialRows; ++i) {
@@ -76,15 +68,13 @@ int main() {
         }
     }
 
-    // Создаем новую матрицу с добавленными строками и столбцами
     int newRows = initialRows + A;
     int newCols = initialCols + B;
     int** newMatrix = (int**)malloc(newRows * sizeof(int*));
-
     for (int i = 0; i < newRows; ++i) {
         newMatrix[i] = (int*)malloc(newCols * sizeof(int));
         for (int j = 0; j < newCols; ++j) {
-            newMatrix[i][j] = (i - A) * C + (j - B + 1) * D; // формула из примера
+            newMatrix[i][j] = (i - A) * C + (j - B + 1) * D;
         }
     }
 
@@ -92,18 +82,15 @@ int main() {
     int zeroCount = 0;
     int* zeroCols = findZeroColumns(newMatrix, newRows, newCols, zeroCount);
 
-    // Удаляем колонки с нулями, если есть
-    if (zeroCount > 0) {
+    // Удаляем колонки, только если есть что удалять
+    if (zeroCols != nullptr) {
         removeColumns(newMatrix, newRows, newCols, zeroCols, zeroCount);
+        free(zeroCols);
     }
-    free(zeroCols);
 
-    // Выводим результат
     cout << "Результирующая матрица:" << endl;
     for (int i = 0; i < newRows; ++i) {
-        for (int j = 0; j < newCols; ++j) {
-            cout << newMatrix[i][j] << "\t";
-        }
+        for (int j = 0; j < newCols; ++j) cout << newMatrix[i][j] << "\t";
         cout << endl;
         free(newMatrix[i]);
     }
@@ -113,16 +100,12 @@ int main() {
     double a, b;
     cout << "Введите два вещественных числа a и b: ";
     cin >> a >> b;
-
     double* pa = &a;
     double* pb = &b;
 
-    // Увеличиваем a в 3 раза через указатель
-    *pa *= 3;
-
-    // Меняем местами значения через указатели
+    *pa *= 3;  // увеличиваем a в 3 раза
     double temp = *pa;
-    *pa = *pb;
+    *pa = *pb; // меняем местами
     *pb = temp;
 
     cout << "После преобразования: a = " << a << ", b = " << b << endl;
