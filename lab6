@@ -1,13 +1,12 @@
 #include <iostream>
-#include <cstdlib> // для malloc, calloc, realloc, free
+#include <cstdlib> // malloc, free
 using namespace std;
 
-// Функция для преобразования матрицы
+// Функция для поиска колонок с нулевыми элементами
 int* findZeroColumns(int** &matrix, int rows, int cols, int &zeroCount) {
     zeroCount = 0;
     int* zeroCols = (int*)malloc(cols * sizeof(int));
 
-    // Ищем колонки с нулевыми элементами
     for (int j = 0; j < cols; ++j) {
         for (int i = 0; i < rows; ++i) {
             if (matrix[i][j] == 0) {
@@ -16,13 +15,17 @@ int* findZeroColumns(int** &matrix, int rows, int cols, int &zeroCount) {
             }
         }
     }
+
     return zeroCols;
 }
 
 // Функция удаления столбцов по индексам
 void removeColumns(int** &matrix, int &rows, int &cols, int* zeroCols, int zeroCount) {
+    if (zeroCount == 0) return; // если нет столбцов для удаления, выходим
+
     int newCols = cols - zeroCount;
     int** newMatrix = (int**)malloc(rows * sizeof(int*));
+
     for (int i = 0; i < rows; ++i) {
         newMatrix[i] = (int*)malloc(newCols * sizeof(int));
         int k = 0;
@@ -77,6 +80,7 @@ int main() {
     int newRows = initialRows + A;
     int newCols = initialCols + B;
     int** newMatrix = (int**)malloc(newRows * sizeof(int*));
+
     for (int i = 0; i < newRows; ++i) {
         newMatrix[i] = (int*)malloc(newCols * sizeof(int));
         for (int j = 0; j < newCols; ++j) {
@@ -84,12 +88,14 @@ int main() {
         }
     }
 
-    // Передаем в функцию
-    int zeroCount;
+    // Поиск колонок с нулями
+    int zeroCount = 0;
     int* zeroCols = findZeroColumns(newMatrix, newRows, newCols, zeroCount);
 
-    // Удаляем столбцы с нулями
-    removeColumns(newMatrix, newRows, newCols, zeroCols, zeroCount);
+    // Удаляем колонки с нулями, если есть
+    if (zeroCount > 0) {
+        removeColumns(newMatrix, newRows, newCols, zeroCols, zeroCount);
+    }
     free(zeroCols);
 
     // Выводим результат
@@ -114,7 +120,7 @@ int main() {
     // Увеличиваем a в 3 раза через указатель
     *pa *= 3;
 
-    // Меняем местами через указатели
+    // Меняем местами значения через указатели
     double temp = *pa;
     *pa = *pb;
     *pb = temp;
