@@ -1,0 +1,112 @@
+#include <iostream>   // для cin и cout
+#include <cstdlib>    // для malloc, calloc, realloc, free
+
+using namespace std;
+
+// Функция для поиска столбцов, в которых есть 0
+int* findZeroColumns(int** arr, int rows, int cols, int* count) {
+    *count = 0;             // сколько столбцов нашли
+    int* result = nullptr;  // массив индексов столбцов
+
+    // перебираем каждый столбец
+    for (int j = 0; j < cols; j++) {
+        bool hasZero = false;
+
+        // перебираем строки в столбце
+        for (int i = 0; i < rows; i++) {
+            if (arr[i][j] == 0) {
+                hasZero = true;
+                break;
+            }
+        }
+
+        // если нашли нулевой столбец
+        if (hasZero) {
+            (*count)++;
+            result = (int*)realloc(result, (*count) * sizeof(int));
+            result[*count - 1] = j;
+        }
+    }
+
+    return result;
+}
+
+
+int main() {
+    int A, B, C, D;
+
+    // --- Ввод ---
+    cout << "Введите A (>=0): ";
+    cin >> A;
+    while (A < 0) {          // проверка
+        cout << "Ошибка. Введите A >= 0: ";
+        cin >> A;
+    }
+
+    cout << "Введите B (>=0): ";
+    cin >> B;
+    while (B < 0) {          // проверка
+        cout << "Ошибка. Введите B >= 0: ";
+        cin >> B;
+    }
+
+    cout << "Введите C: ";
+    cin >> C;
+
+    cout << "Введите D: ";
+    cin >> D;
+
+
+    // --- Размеры результирующей матрицы ---
+    int rows = 2 + A;    // строки
+    int cols = 2 + B;    // столбцы
+
+    // --- Выделение памяти под матрицу ---
+    int** arr = (int**)malloc(rows * sizeof(int*));
+    for (int i = 0; i < rows; i++) {
+        arr[i] = (int*)malloc(cols * sizeof(int));
+    }
+
+    // --- Заполнение ---
+    int rowCoef = -1;     // как в примере: -1, 0, 1, 2...
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            arr[i][j] = rowCoef * C + j * D;   // формула
+        }
+        rowCoef++;
+    }
+
+    // --- Поиск нулевых столбцов ---
+    int zeroCount = 0;
+    int* zeroCols = findZeroColumns(arr, rows, cols, &zeroCount);
+
+    // --- Удаление столбцов ---
+    for (int z = zeroCount - 1; z >= 0; z--) {
+        int colToDelete = zeroCols[z];
+
+        for (int i = 0; i < rows; i++) {
+            // сдвинуть все элементы влево
+            for (int j = colToDelete; j < cols - 1; j++) {
+                arr[i][j] = arr[i][j + 1];
+            }
+        }
+
+        cols--; // уменьшаем количество столбцов
+    }
+
+    // --- Вывод ---
+    cout << "\nИтоговая матрица:\n";
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            cout << arr[i][j] << " ";
+        }
+        cout << "\n";
+    }
+
+    // --- Освобождение памяти ---
+    free(zeroCols);
+    for (int i = 0; i < rows; i++) free(arr[i]);
+    free(arr);
+
+    return 0;
+}
