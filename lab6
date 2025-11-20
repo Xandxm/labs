@@ -31,8 +31,7 @@ int* findZeroColumns(int** matrix, int rows, int cols, int& count) {
 
 // Удаление столбцов по массиву индексов
 void deleteColumns(int** &matrix, int &rows, int &cols, int* zeroCols, int zeroCount) {
-    if (zeroCount == 0) return; // ничего удалять не нужно
-
+    if (zeroCount == 0) return;
     if (zeroCount >= cols) {
         cout << "\nВсе столбцы содержат нули! Нечего удалять.\n";
         return;
@@ -55,7 +54,6 @@ void deleteColumns(int** &matrix, int &rows, int &cols, int* zeroCols, int zeroC
         }
     }
 
-    // Освобождение старой матрицы
     for (int i = 0; i < rows; i++) free(matrix[i]);
     free(matrix);
 
@@ -76,8 +74,8 @@ int main() {
         for (int j = 0; j < 2; j++)
             cin >> matrix[i][j];
 
-    // Ввод A и B с проверкой
-    int A, B;
+    // Ввод параметров
+    int A, B, C, D;
     do {
         cout << "Введите A (кол-во строк для добавления снизу): ";
         cin >> A;
@@ -88,30 +86,29 @@ int main() {
         cin >> B;
     } while (B < 0);
 
-    int C, D;
     cout << "Введите C и D: ";
     cin >> C >> D;
 
     int rows = 2 + A;
     int cols = 2 + B;
 
-    // Расширяем массив (добавляем новые строки снизу)
+    // Расширяем массив
     matrix = (int**)realloc(matrix, rows * sizeof(int*));
     for (int i = 2; i < rows; i++)
         matrix[i] = (int*)calloc(cols, sizeof(int));
 
-    // Расширяем каждый ряд до нужного количества столбцов
     for (int i = 0; i < rows; i++)
         matrix[i] = (int*)realloc(matrix[i], cols * sizeof(int));
 
-    // Вставляем исходную матрицу в левый верхний угол (она уже там)
-    // Заполняем новые элементы по формуле i*C + j*D (i=0..A, j=1..B)
-    for (int i = 0; i <= A; i++) {
-        for (int j = 1; j <= B; j++) {
-            matrix[i][j + 1] = i * C + j * D; // j+1 потому что первые 2 столбца исходные
+    // Заполняем матрицу по формуле с смещением
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            if (i < 2 && j < 2) continue; // сохраняем исходные 2x2
+            matrix[i][j] = (i - 1) * C + (j - 2) * D;
         }
     }
 
+    // Вывод матрицы после заполнения
     cout << "\nМатрица после заполнения:\n";
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++)
@@ -119,15 +116,12 @@ int main() {
         cout << endl;
     }
 
-    // Поиск столбцов с нулями
+    // Поиск и удаление столбцов с нулями
     int zeroCount;
     int* zeroCols = findZeroColumns(matrix, rows, cols, zeroCount);
-
-    // Удаление столбцов с нулями
     deleteColumns(matrix, rows, cols, zeroCols, zeroCount);
     free(zeroCols);
 
-    // Вывод итоговой матрицы
     cout << "\nМатрица после удаления столбцов с нулями:\n";
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++)
@@ -135,11 +129,10 @@ int main() {
         cout << endl;
     }
 
-    // Освобождение памяти
     for (int i = 0; i < rows; i++) free(matrix[i]);
     free(matrix);
 
-    // Работа с указателями для двух вещественных чисел
+    // Работа с указателями (вещественные числа)
     double a, b;
     cout << "\nВведите два вещественных числа a и b: ";
     cin >> a >> b;
@@ -147,9 +140,9 @@ int main() {
     double* pa = &a;
     double* pb = &b;
 
-    *pa *= 3; // Увеличиваем a в 3 раза
+    *pa *= 3; // увеличиваем a в 3 раза
 
-    // Меняем значения a и b через указатели
+    // Меняем местами a и b через указатели
     double temp = *pa;
     *pa = *pb;
     *pb = temp;
