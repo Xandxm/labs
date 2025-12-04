@@ -6,6 +6,8 @@
 #include <limits>
 #include <map>
 #include <set>
+#include <cstdlib>
+#include <ctime>
 
 using namespace std;
 
@@ -73,8 +75,10 @@ int main() {
                 cout << "Неверный выбор. Попробуйте снова." << endl;
         }
         
-        cout << "\nНажмите Enter для продолжения...";
-        cin.get();
+        if (choice != 0) {
+            cout << "\nНажмите Enter для продолжения...";
+            cin.get();
+        }
         
     } while(running);
     
@@ -124,7 +128,8 @@ void displayAllDrinks() {
          << setw(12) << "Без сахара" << endl;
     cout << string(85, '-') << endl;
     
-    for (const auto& drink : catalog) {
+    for (size_t i = 0; i < catalog.size(); ++i) {
+        const EnergyDrink& drink = catalog[i];
         cout << left << setw(5) << drink.id
              << setw(15) << drink.brand
              << setw(20) << drink.flavor
@@ -143,9 +148,9 @@ void createNewDrink() {
     
     // Генерация ID (максимальный существующий + 1)
     int maxId = 0;
-    for (const auto& drink : catalog) {
-        if (drink.id > maxId) {
-            maxId = drink.id;
+    for (size_t i = 0; i < catalog.size(); ++i) {
+        if (catalog[i].id > maxId) {
+            maxId = catalog[i].id;
         }
     }
     newDrink.id = maxId + 1;
@@ -157,16 +162,34 @@ void createNewDrink() {
     getline(cin, newDrink.flavor);
     
     cout << "Введите объем (мл): ";
-    cin >> newDrink.volume;
+    while (!(cin >> newDrink.volume) || newDrink.volume <= 0) {
+        cout << "Ошибка! Введите положительное число: ";
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    }
     
     cout << "Введите цену (руб.): ";
-    cin >> newDrink.price;
+    while (!(cin >> newDrink.price) || newDrink.price < 0) {
+        cout << "Ошибка! Введите неотрицательное число: ";
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    }
     
     cout << "Введите содержание кофеина (мг): ";
-    cin >> newDrink.caffeine;
+    while (!(cin >> newDrink.caffeine) || newDrink.caffeine < 0) {
+        cout << "Ошибка! Введите неотрицательное число: ";
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    }
     
     cout << "Без сахара (1 - да, 0 - нет): ";
-    cin >> newDrink.sugarFree;
+    int sugarInput;
+    while (!(cin >> sugarInput) || (sugarInput != 0 && sugarInput != 1)) {
+        cout << "Ошибка! Введите 1 или 0: ";
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    }
+    newDrink.sugarFree = (sugarInput == 1);
     
     // Очистка буфера
     cin.ignore(numeric_limits<streamsize>::max(), '\n');
@@ -199,17 +222,23 @@ void sortByPrice() {
     
     if (choice == 1) {
         // Сортировка по возрастанию цены
-        sort(sortedCatalog.begin(), sortedCatalog.end(), 
-             [](const EnergyDrink& a, const EnergyDrink& b) {
-                 return a.price < b.price;
-             });
+        for (size_t i = 0; i < sortedCatalog.size() - 1; ++i) {
+            for (size_t j = i + 1; j < sortedCatalog.size(); ++j) {
+                if (sortedCatalog[j].price < sortedCatalog[i].price) {
+                    swap(sortedCatalog[i], sortedCatalog[j]);
+                }
+            }
+        }
         cout << "\nКаталог отсортирован по возрастанию цены:" << endl;
     } else if (choice == 2) {
         // Сортировка по убыванию цены
-        sort(sortedCatalog.begin(), sortedCatalog.end(), 
-             [](const EnergyDrink& a, const EnergyDrink& b) {
-                 return a.price > b.price;
-             });
+        for (size_t i = 0; i < sortedCatalog.size() - 1; ++i) {
+            for (size_t j = i + 1; j < sortedCatalog.size(); ++j) {
+                if (sortedCatalog[j].price > sortedCatalog[i].price) {
+                    swap(sortedCatalog[i], sortedCatalog[j]);
+                }
+            }
+        }
         cout << "\nКаталог отсортирован по убыванию цены:" << endl;
     } else {
         cout << "Неверный выбор." << endl;
@@ -223,7 +252,8 @@ void sortByPrice() {
          << setw(10) << "Цена" << endl;
     cout << string(50, '-') << endl;
     
-    for (const auto& drink : sortedCatalog) {
+    for (size_t i = 0; i < sortedCatalog.size(); ++i) {
+        const EnergyDrink& drink = sortedCatalog[i];
         cout << left << setw(5) << drink.id
              << setw(15) << drink.brand
              << setw(20) << drink.flavor
@@ -242,9 +272,10 @@ void uniqueFlavors() {
     
     // Собираем статистику по вкусам
     map<string, int> flavorCount;
-    map<string, vector<string>> flavorBrands; // Вкус -> список брендов
+    map<string, vector<string> > flavorBrands; // Вкус -> список брендов
     
-    for (const auto& drink : catalog) {
+    for (size_t i = 0; i < catalog.size(); ++i) {
+        const EnergyDrink& drink = catalog[i];
         flavorCount[drink.flavor]++;
         flavorBrands[drink.flavor].push_back(drink.brand);
     }
@@ -252,17 +283,20 @@ void uniqueFlavors() {
     // Выводим уникальные вкусы (встречаются только у одного напитка)
     bool hasUniqueFlavors = false;
     
-    for (const auto& [flavor, count] : flavorCount) {
+    // Итерация по map
+    for (map<string, int>::iterator it = flavorCount.begin(); it != flavorCount.end(); ++it) {
+        string flavor = it->first;
+        int count = it->second;
         if (count == 1) {
             hasUniqueFlavors = true;
             cout << "\nУникальный вкус: " << flavor << endl;
             cout << "Бренд: " << flavorBrands[flavor][0] << endl;
             
             // Находим напиток с этим вкусом
-            for (const auto& drink : catalog) {
-                if (drink.flavor == flavor) {
-                    cout << "Объем: " << drink.volume << " мл" << endl;
-                    cout << "Цена: " << fixed << setprecision(2) << drink.price << " руб." << endl;
+            for (size_t i = 0; i < catalog.size(); ++i) {
+                if (catalog[i].flavor == flavor) {
+                    cout << "Объем: " << catalog[i].volume << " мл" << endl;
+                    cout << "Цена: " << fixed << setprecision(2) << catalog[i].price << " руб." << endl;
                     break;
                 }
             }
@@ -284,36 +318,45 @@ void displayByFlavors() {
     cout << "\n=== НАПИТКИ ПО ВКУСАМ ===" << endl;
     
     // Группируем напитки по вкусам
-    map<string, vector<EnergyDrink>> drinksByFlavor;
+    map<string, vector<EnergyDrink> > drinksByFlavor;
     
-    for (const auto& drink : catalog) {
+    for (size_t i = 0; i < catalog.size(); ++i) {
+        const EnergyDrink& drink = catalog[i];
         drinksByFlavor[drink.flavor].push_back(drink);
     }
     
     // Выводим для каждого вкуса
     int flavorIndex = 1;
-    for (const auto& [flavor, drinks] : drinksByFlavor) {
-        cout << "\n" << flavorIndex << ". Вкус: " << flavor << endl;
+    vector<pair<string, vector<EnergyDrink> > > flavorList;
+    
+    // Копируем данные из map в вектор для индексации
+    for (map<string, vector<EnergyDrink> >::iterator it = drinksByFlavor.begin(); 
+         it != drinksByFlavor.end(); ++it) {
+        flavorList.push_back(make_pair(it->first, it->second));
+    }
+    
+    // Выводим список вкусов
+    for (size_t i = 0; i < flavorList.size(); ++i) {
+        string flavor = flavorList[i].first;
+        vector<EnergyDrink>& drinks = flavorList[i].second;
+        
+        cout << "\n" << (i + 1) << ". Вкус: " << flavor << endl;
         cout << "   Количество напитков: " << drinks.size() << endl;
         cout << "   Напитки:" << endl;
         
-        for (const auto& drink : drinks) {
+        for (size_t j = 0; j < drinks.size(); ++j) {
+            const EnergyDrink& drink = drinks[j];
             cout << "   - " << drink.brand 
                  << " (" << drink.volume << " мл, " 
                  << fixed << setprecision(2) << drink.price << " руб.)" << endl;
         }
-        
-        flavorIndex++;
     }
     
     // Добавляем переходы между вкусами
     cout << "\n=== ПЕРЕХОДЫ МЕЖДУ ВКУСАМИ ===" << endl;
     cout << "Для перехода к напиткам определенного вкуса введите его номер:" << endl;
     
-    // Создаем вектор для быстрого доступа по индексу
-    vector<pair<string, vector<EnergyDrink>>> flavorList(drinksByFlavor.begin(), drinksByFlavor.end());
-    
-    for (size_t i = 0; i < flavorList.size(); i++) {
+    for (size_t i = 0; i < flavorList.size(); ++i) {
         cout << i + 1 << ". " << flavorList[i].first << endl;
     }
     
@@ -324,14 +367,16 @@ void displayByFlavors() {
     cin >> choice;
     cin.ignore(numeric_limits<streamsize>::max(), '\n');
     
-    if (choice > 0 && choice <= static_cast<int>(flavorList.size())) {
+    if (choice > 0 && choice <= (int)flavorList.size()) {
         cout << "\n=== ДЕТАЛЬНАЯ ИНФОРМАЦИЯ ПО ВКУСУ: " 
              << flavorList[choice - 1].first << " ===" << endl;
         
-        for (const auto& drink : flavorList[choice - 1].second) {
-            viewDrink(drink);
+        for (size_t i = 0; i < flavorList[choice - 1].second.size(); ++i) {
+            viewDrink(flavorList[choice - 1].second[i]);
             cout << endl;
         }
+    } else if (choice != 0) {
+        cout << "Неверный выбор." << endl;
     }
 }
 
@@ -341,7 +386,7 @@ void initializeCatalog() {
     catalog.clear();
     
     // Добавляем 6+ энергетических напитков
-    catalog = {
+    EnergyDrink drinks[] = {
         {1, "Red Bull", "Классический", 250, 120.50, 80, false},
         {2, "Red Bull", "Тропик", 250, 125.00, 80, false},
         {3, "Burn", "Яблоко", 250, 95.00, 90, false},
@@ -355,6 +400,10 @@ void initializeCatalog() {
         {11, "Flash", "Цитрус", 250, 70.00, 85, false},
         {12, "Flash", "Экзотик", 250, 70.00, 85, true}
     };
+    
+    for (int i = 0; i < 12; ++i) {
+        catalog.push_back(drinks[i]);
+    }
     
     cout << "Каталог инициализирован " << catalog.size() << " напитками." << endl;
 }
