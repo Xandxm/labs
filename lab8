@@ -1,0 +1,360 @@
+#include <iostream>
+#include <vector>
+#include <string>
+#include <algorithm>
+#include <iomanip>
+#include <limits>
+#include <map>
+#include <set>
+
+using namespace std;
+
+// Структура для хранения информации об энергетическом напитке
+struct EnergyDrink {
+    int id;                 // Уникальный идентификатор
+    string brand;           // Бренд
+    string flavor;          // Вкус
+    int volume;             // Объем в мл
+    double price;           // Цена в рублях
+    int caffeine;           // Содержание кофеина в мг
+    bool sugarFree;         // Без сахара
+};
+
+// Глобальный каталог напитков
+vector<EnergyDrink> catalog;
+
+// Прототипы функций
+void displayMenu();
+void viewDrink(const EnergyDrink& drink);
+void displayAllDrinks();
+void createNewDrink();
+void sortByPrice();
+void uniqueFlavors();
+void displayByFlavors();
+void initializeCatalog();
+
+int main() {
+    // Инициализация каталога начальными данными
+    initializeCatalog();
+    
+    int choice;
+    bool running = true;
+    
+    do {
+        displayMenu();
+        cout << "Выберите действие: ";
+        cin >> choice;
+        
+        // Очистка буфера ввода
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        
+        switch(choice) {
+            case 0:
+                running = false;
+                cout << "Выход из программы." << endl;
+                break;
+            case 1:
+                displayAllDrinks();
+                break;
+            case 2:
+                createNewDrink();
+                break;
+            case 3:
+                sortByPrice();
+                break;
+            case 4:
+                uniqueFlavors();
+                break;
+            case 5:
+                displayByFlavors();
+                break;
+            default:
+                cout << "Неверный выбор. Попробуйте снова." << endl;
+        }
+        
+        cout << "\nНажмите Enter для продолжения...";
+        cin.get();
+        
+    } while(running);
+    
+    return 0;
+}
+
+// Функция отображения меню
+void displayMenu() {
+    cout << "\n=== КАТАЛОГ ЭНЕРГЕТИЧЕСКИХ НАПИТКОВ ===" << endl;
+    cout << "0. Выход" << endl;
+    cout << "1. Просмотр всех напитков" << endl;
+    cout << "2. Добавить новый напиток" << endl;
+    cout << "3. Сортировка по стоимости" << endl;
+    cout << "4. Вывод уникальных вкусов" << endl;
+    cout << "5. Вывод напитков по вкусам" << endl;
+    cout << "=====================================" << endl;
+}
+
+// Функция просмотра одного напитка
+void viewDrink(const EnergyDrink& drink) {
+    cout << "\n=== Информация о напитке ===" << endl;
+    cout << "ID: " << drink.id << endl;
+    cout << "Бренд: " << drink.brand << endl;
+    cout << "Вкус: " << drink.flavor << endl;
+    cout << "Объем: " << drink.volume << " мл" << endl;
+    cout << fixed << setprecision(2);
+    cout << "Цена: " << drink.price << " руб." << endl;
+    cout << "Кофеин: " << drink.caffeine << " мг" << endl;
+    cout << "Без сахара: " << (drink.sugarFree ? "Да" : "Нет") << endl;
+    cout << "=============================" << endl;
+}
+
+// Функция просмотра всех напитков
+void displayAllDrinks() {
+    if (catalog.empty()) {
+        cout << "Каталог пуст." << endl;
+        return;
+    }
+    
+    cout << "\n=== ВСЕ НАПИТКИ В КАТАЛОГЕ ===" << endl;
+    cout << left << setw(5) << "ID" 
+         << setw(15) << "Бренд" 
+         << setw(20) << "Вкус" 
+         << setw(10) << "Объем" 
+         << setw(10) << "Цена" 
+         << setw(12) << "Кофеин" 
+         << setw(12) << "Без сахара" << endl;
+    cout << string(85, '-') << endl;
+    
+    for (const auto& drink : catalog) {
+        cout << left << setw(5) << drink.id
+             << setw(15) << drink.brand
+             << setw(20) << drink.flavor
+             << setw(10) << (to_string(drink.volume) + " мл")
+             << fixed << setprecision(2) << setw(10) << drink.price
+             << setw(12) << (to_string(drink.caffeine) + " мг")
+             << setw(12) << (drink.sugarFree ? "Да" : "Нет") << endl;
+    }
+}
+
+// Функция создания нового напитка
+void createNewDrink() {
+    EnergyDrink newDrink;
+    
+    cout << "\n=== ДОБАВЛЕНИЕ НОВОГО НАПИТКА ===" << endl;
+    
+    // Генерация ID (максимальный существующий + 1)
+    int maxId = 0;
+    for (const auto& drink : catalog) {
+        if (drink.id > maxId) {
+            maxId = drink.id;
+        }
+    }
+    newDrink.id = maxId + 1;
+    
+    cout << "Введите бренд: ";
+    getline(cin, newDrink.brand);
+    
+    cout << "Введите вкус: ";
+    getline(cin, newDrink.flavor);
+    
+    cout << "Введите объем (мл): ";
+    cin >> newDrink.volume;
+    
+    cout << "Введите цену (руб.): ";
+    cin >> newDrink.price;
+    
+    cout << "Введите содержание кофеина (мг): ";
+    cin >> newDrink.caffeine;
+    
+    cout << "Без сахара (1 - да, 0 - нет): ";
+    cin >> newDrink.sugarFree;
+    
+    // Очистка буфера
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    
+    // Добавление в каталог
+    catalog.push_back(newDrink);
+    
+    cout << "Напиток успешно добавлен!" << endl;
+    viewDrink(newDrink);
+}
+
+// Функция сортировки по стоимости
+void sortByPrice() {
+    if (catalog.empty()) {
+        cout << "Каталог пуст." << endl;
+        return;
+    }
+    
+    cout << "\n=== СОРТИРОВКА ПО СТОИМОСТИ ===" << endl;
+    cout << "1. По возрастанию" << endl;
+    cout << "2. По убыванию" << endl;
+    cout << "Выберите вариант сортировки: ";
+    
+    int choice;
+    cin >> choice;
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    
+    // Создаем копию каталога для сортировки
+    vector<EnergyDrink> sortedCatalog = catalog;
+    
+    if (choice == 1) {
+        // Сортировка по возрастанию цены
+        sort(sortedCatalog.begin(), sortedCatalog.end(), 
+             [](const EnergyDrink& a, const EnergyDrink& b) {
+                 return a.price < b.price;
+             });
+        cout << "\nКаталог отсортирован по возрастанию цены:" << endl;
+    } else if (choice == 2) {
+        // Сортировка по убыванию цены
+        sort(sortedCatalog.begin(), sortedCatalog.end(), 
+             [](const EnergyDrink& a, const EnergyDrink& b) {
+                 return a.price > b.price;
+             });
+        cout << "\nКаталог отсортирован по убыванию цены:" << endl;
+    } else {
+        cout << "Неверный выбор." << endl;
+        return;
+    }
+    
+    // Вывод отсортированного каталога
+    cout << left << setw(5) << "ID" 
+         << setw(15) << "Бренд" 
+         << setw(20) << "Вкус" 
+         << setw(10) << "Цена" << endl;
+    cout << string(50, '-') << endl;
+    
+    for (const auto& drink : sortedCatalog) {
+        cout << left << setw(5) << drink.id
+             << setw(15) << drink.brand
+             << setw(20) << drink.flavor
+             << fixed << setprecision(2) << setw(10) << drink.price << endl;
+    }
+}
+
+// Функция вывода уникальных вкусов
+void uniqueFlavors() {
+    if (catalog.empty()) {
+        cout << "Каталог пуст." << endl;
+        return;
+    }
+    
+    cout << "\n=== УНИКАЛЬНЫЕ ВКУСЫ ===" << endl;
+    
+    // Собираем статистику по вкусам
+    map<string, int> flavorCount;
+    map<string, vector<string>> flavorBrands; // Вкус -> список брендов
+    
+    for (const auto& drink : catalog) {
+        flavorCount[drink.flavor]++;
+        flavorBrands[drink.flavor].push_back(drink.brand);
+    }
+    
+    // Выводим уникальные вкусы (встречаются только у одного напитка)
+    bool hasUniqueFlavors = false;
+    
+    for (const auto& [flavor, count] : flavorCount) {
+        if (count == 1) {
+            hasUniqueFlavors = true;
+            cout << "\nУникальный вкус: " << flavor << endl;
+            cout << "Бренд: " << flavorBrands[flavor][0] << endl;
+            
+            // Находим напиток с этим вкусом
+            for (const auto& drink : catalog) {
+                if (drink.flavor == flavor) {
+                    cout << "Объем: " << drink.volume << " мл" << endl;
+                    cout << "Цена: " << fixed << setprecision(2) << drink.price << " руб." << endl;
+                    break;
+                }
+            }
+        }
+    }
+    
+    if (!hasUniqueFlavors) {
+        cout << "Уникальных вкусов не найдено." << endl;
+    }
+}
+
+// Функция вывода напитков по вкусам (с переходами)
+void displayByFlavors() {
+    if (catalog.empty()) {
+        cout << "Каталог пуст." << endl;
+        return;
+    }
+    
+    cout << "\n=== НАПИТКИ ПО ВКУСАМ ===" << endl;
+    
+    // Группируем напитки по вкусам
+    map<string, vector<EnergyDrink>> drinksByFlavor;
+    
+    for (const auto& drink : catalog) {
+        drinksByFlavor[drink.flavor].push_back(drink);
+    }
+    
+    // Выводим для каждого вкуса
+    int flavorIndex = 1;
+    for (const auto& [flavor, drinks] : drinksByFlavor) {
+        cout << "\n" << flavorIndex << ". Вкус: " << flavor << endl;
+        cout << "   Количество напитков: " << drinks.size() << endl;
+        cout << "   Напитки:" << endl;
+        
+        for (const auto& drink : drinks) {
+            cout << "   - " << drink.brand 
+                 << " (" << drink.volume << " мл, " 
+                 << fixed << setprecision(2) << drink.price << " руб.)" << endl;
+        }
+        
+        flavorIndex++;
+    }
+    
+    // Добавляем переходы между вкусами
+    cout << "\n=== ПЕРЕХОДЫ МЕЖДУ ВКУСАМИ ===" << endl;
+    cout << "Для перехода к напиткам определенного вкуса введите его номер:" << endl;
+    
+    // Создаем вектор для быстрого доступа по индексу
+    vector<pair<string, vector<EnergyDrink>>> flavorList(drinksByFlavor.begin(), drinksByFlavor.end());
+    
+    for (size_t i = 0; i < flavorList.size(); i++) {
+        cout << i + 1 << ". " << flavorList[i].first << endl;
+    }
+    
+    cout << "0. Вернуться в меню" << endl;
+    cout << "Выберите вкус для подробной информации: ";
+    
+    int choice;
+    cin >> choice;
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    
+    if (choice > 0 && choice <= static_cast<int>(flavorList.size())) {
+        cout << "\n=== ДЕТАЛЬНАЯ ИНФОРМАЦИЯ ПО ВКУСУ: " 
+             << flavorList[choice - 1].first << " ===" << endl;
+        
+        for (const auto& drink : flavorList[choice - 1].second) {
+            viewDrink(drink);
+            cout << endl;
+        }
+    }
+}
+
+// Функция инициализации начального каталога
+void initializeCatalog() {
+    // Очищаем каталог, если он не пуст
+    catalog.clear();
+    
+    // Добавляем 6+ энергетических напитков
+    catalog = {
+        {1, "Red Bull", "Классический", 250, 120.50, 80, false},
+        {2, "Red Bull", "Тропик", 250, 125.00, 80, false},
+        {3, "Burn", "Яблоко", 250, 95.00, 90, false},
+        {4, "Burn", "Манго", 250, 95.00, 90, false},
+        {5, "Adrenaline Rush", "Оригинал", 250, 85.50, 100, false},
+        {6, "Adrenaline Rush", "Лимон", 250, 85.50, 100, true},
+        {7, "Monster", "Зеленая энергия", 500, 150.00, 160, false},
+        {8, "Monster", "Ультра", 500, 155.00, 140, true},
+        {9, "Gorilla", "Фруктовый микс", 250, 80.00, 75, false},
+        {10, "Gorilla", "Кола", 250, 80.00, 75, false},
+        {11, "Flash", "Цитрус", 250, 70.00, 85, false},
+        {12, "Flash", "Экзотик", 250, 70.00, 85, true}
+    };
+    
+    cout << "Каталог инициализирован " << catalog.size() << " напитками." << endl;
+}
