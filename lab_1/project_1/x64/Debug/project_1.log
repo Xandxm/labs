@@ -1,5 +1,0 @@
-﻿  project_1.cpp
-C:\Users\йоу\source\repos\project_1\project_1\project_1.cpp(23,17): warning C4244: инициализация: преобразование "double" в "int", возможна потеря данных
-C:\Users\йоу\source\repos\project_1\project_1\project_1.cpp(24,17): warning C4244: инициализация: преобразование "double" в "int", возможна потеря данных
-C:\Users\йоу\source\repos\project_1\project_1\project_1.cpp(31,20): warning C4244: инициализация: преобразование "double" в "int", возможна потеря данных
-  project_1.vcxproj -> C:\Users\йоу\source\repos\project_1\x64\Debug\project_1.exe
