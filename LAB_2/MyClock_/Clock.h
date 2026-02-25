@@ -26,7 +26,7 @@ public:
     Clock& operator=(const Clock& other);
     Clock operator+(const Clock& other) const;
     Clock operator/(const Clock& other) const;
-    
+
     int getDay() const;
     int getMonth() const;
     int getYear() const;
@@ -34,7 +34,7 @@ public:
     int getMinutes() const;
     std::string getDayOfWeek() const;
     std::vector<std::string>* getTasks() const;
-    
+
     void setYear(int y);
     void setMonth(int m);
     void setDay(int d);
@@ -42,17 +42,17 @@ public:
     void setMinutes(int m);
     void setDayOfWeek(std::string dw);
     void setTasks(std::vector<std::string>* t);
-    
+
     int getMaxDays(int m) const;
     void displayInfo() const;
     void addMinutes(int x);
     void addOneDay();
     void addWeek();
     void addThreeDays();
-    std::vector<std::string> getUniqueTasks(const std::vector<std::string>& t1, 
-                                            const std::vector<std::string>& t2) const;
-    std::vector<std::string> getRandomTasks(const std::vector<std::string>& t1, 
-                                            const std::vector<std::string>& t2) const;
+    std::vector<std::string> getUniqueTasks(const std::vector<std::string>& t1,
+        const std::vector<std::string>& t2) const;
+    std::vector<std::string> getRandomTasks(const std::vector<std::string>& t1,
+        const std::vector<std::string>& t2) const;
 };
 
 #endif
