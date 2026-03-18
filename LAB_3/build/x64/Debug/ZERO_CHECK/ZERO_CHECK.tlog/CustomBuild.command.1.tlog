@@ -1,0 +1,10 @@
+^C:\GIT\LABS\LAB_3\BUILD\CMAKEFILES\49764F61FFCB8971B00C02FD5DA7D7CD\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/GIT/labs/LAB_3 -BC:/GIT/labs/LAB_3/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/GIT/labs/LAB_3/build/ClockLab.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

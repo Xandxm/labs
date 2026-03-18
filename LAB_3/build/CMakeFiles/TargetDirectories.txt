@@ -1,0 +1,3 @@
+C:/GIT/labs/LAB_3/build/CMakeFiles/ClockApp.dir
+C:/GIT/labs/LAB_3/build/CMakeFiles/ALL_BUILD.dir
+C:/GIT/labs/LAB_3/build/CMakeFiles/ZERO_CHECK.dir
