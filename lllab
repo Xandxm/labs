@@ -2,40 +2,57 @@
 #include <string>
 #include <cstdlib>
 #include <vector>
+
 #ifdef _WIN32
 #include <windows.h>
+#include <io.h>
+#include <fcntl.h>
 #endif
 
 using namespace std;
 
-// Раскомментируйте строку ниже, чтобы включить вариант с vector.
+// ============================================================
+// НАСТРОЙКИ ЛАБОРАТОРНОЙ
+// ============================================================
+
+// Оставьте закомментированной -> malloc + realloc
+// Раскомментируйте -> vector
 // #define USE_VECTOR
 
-bool vowel(wchar_t c)
+// Оставьте закомментированной -> Windows API SetConsoleTextAttribute
+// Раскомментируйте -> ANSI-коды
+// #define USE_ANSI
+
+// ============================================================
+
+bool isVowel(wchar_t c)
 {
-    wstring s = L"аеёиоуыэюяАЕЁИОУЫЭЮЯ";
-    return s.find(c) != wstring::npos;
+    wstring vowels = L"аеёиоуыэюяАЕЁИОУЫЭЮЯ";
+    return vowels.find(c) != wstring::npos;
 }
 
-bool consonant(wchar_t c)
+bool isConsonant(wchar_t c)
 {
-    wstring s = L"бвгджзйклмнпрстфхцчшщБВГДЖЗЙКЛМНПРСТФХЦЧШЩ";
-    return s.find(c) != wstring::npos;
+    wstring consonants =
+        L"бвгджзйклмнпрстфхцчшщБВГДЖЗЙКЛМНПРСТФХЦЧШЩ";
+    return consonants.find(c) != wstring::npos;
 }
 
-// Для раскраски: строчные и прописные буквы считаются одной буквой.
+// Строки массива хранят регистр как во введенной строке:
+// 'а' и 'А' — разные элементы.
+// При раскраске буквы одного регистра не различаются.
 bool sameLetter(wchar_t a, wchar_t b)
 {
     if (a == b)
         return true;
 
-    if ((a >= L'а' && a <= L'я') && (b == a - L'а' + L'А'))
+    if (a >= L'А' && a <= L'Я' && b == a + (L'а' - L'А'))
         return true;
 
-    if ((a >= L'А' && a <= L'Я') && (b == a - L'А' + L'а'))
+    if (a >= L'а' && a <= L'я' && b == a - (L'а' - L'А'))
         return true;
 
-    if ((a == L'ё' && b == L'Ё') || (a == L'Ё' && b == L'ё'))
+    if ((a == L'Ё' && b == L'ё') || (a == L'ё' && b == L'Ё'))
         return true;
 
     return false;
@@ -43,46 +60,72 @@ bool sameLetter(wchar_t a, wchar_t b)
 
 int getRow(wchar_t c)
 {
-    if (vowel(c)) return 0;
-    if (consonant(c)) return 1;
-    if (c >= L'0' && c <= L'9') return 2;
-    if (c != L'@') return 3;
+    if (isVowel(c))
+        return 0;
+
+    if (isConsonant(c))
+        return 1;
+
+    if (c >= L'0' && c <= L'9')
+        return 2;
+
+    if (c != L'@')
+        return 3;
+
     return -1;
 }
 
 void setColor(int color)
 {
-#ifdef _WIN32
-    HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
-    SetConsoleTextAttribute(h, color);
+#ifdef USE_ANSI
+    // ANSI: 31-красный, 34-синий, 32-зеленый, 33-желтый
+    wcout << L"\033[" << color << L"m";
 #else
-    const wchar_t* code = L"\033[0m";
-    if (color == 31) code = L"\033[31m";
-    else if (color == 32) code = L"\033[32m";
-    else if (color == 33) code = L"\033[33m";
-    else if (color == 34) code = L"\033[34m";
-    wcout << code;
+#ifdef _WIN32
+    // Windows API: 4 — красный, 1 — синий, 2 — зеленый, 6 — желтый
+    HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
+
+    if (color == 31)
+        SetConsoleTextAttribute(console, FOREGROUND_RED | FOREGROUND_INTENSITY);
+    else if (color == 34)
+        SetConsoleTextAttribute(console, FOREGROUND_BLUE | FOREGROUND_INTENSITY);
+    else if (color == 32)
+        SetConsoleTextAttribute(console, FOREGROUND_GREEN | FOREGROUND_INTENSITY);
+    else if (color == 33)
+        SetConsoleTextAttribute(console,
+            FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY);
+#else
+    wcout << L"\033[" << color << L"m";
+#endif
 #endif
 }
 
 void resetColor()
 {
+#ifdef USE_ANSI
+    wcout << L"\033[0m";
+#else
 #ifdef _WIN32
-    HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
-    SetConsoleTextAttribute(h, 7);
+    HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
+    SetConsoleTextAttribute(console,
+        FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
 #else
     wcout << L"\033[0m";
+#endif
 #endif
 }
 
 int main()
 {
 #ifdef _WIN32
-    SetConsoleCP(CP_UTF8);
-    SetConsoleOutputCP(CP_UTF8);
+    // Работаем с Unicode напрямую, чтобы русские буквы не превращались
+    // в набор неправильных символов.
+    _setmode(_fileno(stdin), _O_U16TEXT);
+    _setmode(_fileno(stdout), _O_U16TEXT);
 #endif
 
     wstring str;
+
     wcout << L"Введите строку (не более 50 символов, без латиницы): ";
     getline(wcin, str);
 
@@ -92,17 +135,23 @@ int main()
         return 1;
     }
 
-    wcout << L"\nЗубчатый массив:\n";
-
+    // ========================================================
+    // ВАРИАНТ 1: VECTOR
+    // ========================================================
 #ifdef USE_VECTOR
+
     vector<vector<wchar_t>> a(4);
 
     for (wchar_t c : str)
     {
         int row = getRow(c);
-        if (row == -1) continue;
+
+        // Символ @ в массив не добавляем.
+        if (row == -1)
+            continue;
 
         bool exists = false;
+
         for (wchar_t x : a[row])
         {
             if (x == c)
@@ -116,44 +165,83 @@ int main()
             a[row].push_back(c);
     }
 
-    const wchar_t* names[4] = { L"Гласные: ", L"Согласные: ", L"Цифры: ", L"Знаки: " };
+    wcout << L"\nЗубчатый массив:\n";
+
+    const wchar_t* names[4] =
+    {
+        L"1) Гласные: ",
+        L"2) Согласные: ",
+        L"3) Цифры: ",
+        L"4) Знаки и символы: "
+    };
+
     for (int i = 0; i < 4; ++i)
     {
         wcout << names[i];
-        for (wchar_t c : a[i]) wcout << c << L' ';
+
+        for (wchar_t c : a[i])
+            wcout << c << L' ';
+
         wcout << L'\n';
     }
 
+    // Добавляем требуемую подстроку.
     str += L"+123АБВ";
-    wcout << L"\nРезультирующая строка: ";
+
+    wcout << L"\nРезультирующая строка:\n";
 
     for (wchar_t c : str)
     {
         int row = -1;
+
+        // ВАЖНО: поиск выполняется именно в полученном зубчатом массиве.
         for (int i = 0; i < 4 && row == -1; ++i)
+        {
             for (wchar_t x : a[i])
-                if (sameLetter(x, c)) { row = i; break; }
+            {
+                if (sameLetter(x, c))
+                {
+                    row = i;
+                    break;
+                }
+            }
+        }
 
-        if (row == 0) setColor(31);
-        else if (row == 1) setColor(34);
-        else if (row == 2) setColor(32);
-        else if (row == 3) setColor(33);
+        if (row == 0)
+            setColor(31);       // красный
+        else if (row == 1)
+            setColor(34);       // синий
+        else if (row == 2)
+            setColor(32);       // зеленый
+        else if (row == 3)
+            setColor(33);       // желтый
 
+        // @ не попадает в массив, поэтому останется без цвета.
         wcout << c;
         resetColor();
     }
+
     wcout << L'\n';
 
+
+// ========================================================
+// ВАРИАНТ 2: MALLOC + REALLOC
+// ========================================================
 #else
+
     wchar_t* b[4] = { nullptr, nullptr, nullptr, nullptr };
     int size[4] = { 0, 0, 0, 0 };
 
     for (wchar_t c : str)
     {
         int row = getRow(c);
-        if (row == -1) continue;
+
+        // Символ @ в массив не добавляем.
+        if (row == -1)
+            continue;
 
         bool exists = false;
+
         for (int i = 0; i < size[row]; ++i)
         {
             if (b[row][i] == c)
@@ -165,50 +253,91 @@ int main()
 
         if (!exists)
         {
-            wchar_t* temp = (wchar_t*)realloc(b[row], (size[row] + 1) * sizeof(wchar_t));
+            wchar_t* temp =
+                (wchar_t*)realloc(
+                    b[row],
+                    (size[row] + 1) * sizeof(wchar_t)
+                );
+
             if (temp == nullptr)
             {
-                for (int i = 0; i < 4; ++i) free(b[i]);
+                for (int i = 0; i < 4; ++i)
+                    free(b[i]);
+
                 wcout << L"Ошибка выделения памяти.\n";
                 return 1;
             }
+
             b[row] = temp;
             b[row][size[row]] = c;
             ++size[row];
         }
     }
 
-    const wchar_t* names[4] = { L"Гласные: ", L"Согласные: ", L"Цифры: ", L"Знаки: " };
+    wcout << L"\nЗубчатый массив:\n";
+
+    const wchar_t* names[4] =
+    {
+        L"1) Гласные: ",
+        L"2) Согласные: ",
+        L"3) Цифры: ",
+        L"4) Знаки и символы: "
+    };
+
     for (int i = 0; i < 4; ++i)
     {
         wcout << names[i];
-        for (int j = 0; j < size[i]; ++j) wcout << b[i][j] << L' ';
+
+        for (int j = 0; j < size[i]; ++j)
+            wcout << b[i][j] << L' ';
+
         wcout << L'\n';
     }
 
+    // Добавляем требуемую подстроку.
     str += L"+123АБВ";
-    wcout << L"\nРезультирующая строка: ";
+
+    wcout << L"\nРезультирующая строка:\n";
 
     for (wchar_t c : str)
     {
         int row = -1;
+
+        // ВАЖНО: поиск выполняется именно в полученном зубчатом массиве.
         for (int i = 0; i < 4 && row == -1; ++i)
+        {
             for (int j = 0; j < size[i]; ++j)
-                if (sameLetter(b[i][j], c)) { row = i; break; }
+            {
+                if (sameLetter(b[i][j], c))
+                {
+                    row = i;
+                    break;
+                }
+            }
+        }
 
-        if (row == 0) setColor(31);
-        else if (row == 1) setColor(34);
-        else if (row == 2) setColor(32);
-        else if (row == 3) setColor(33);
+        if (row == 0)
+            setColor(31);       // красный
+        else if (row == 1)
+            setColor(34);       // синий
+        else if (row == 2)
+            setColor(32);       // зеленый
+        else if (row == 3)
+            setColor(33);       // желтый
 
+        // @ не попадает в массив, поэтому останется без цвета.
         wcout << c;
         resetColor();
     }
+
     wcout << L'\n';
 
+    // Освобождаем всю память, выделенную через malloc/realloc.
     for (int i = 0; i < 4; ++i)
         free(b[i]);
+
 #endif
 
     return 0;
 }
+
