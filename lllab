@@ -1,0 +1,214 @@
+#include <iostream>
+#include <string>
+#include <cstdlib>
+#include <vector>
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
+using namespace std;
+
+// Раскомментируйте строку ниже, чтобы включить вариант с vector.
+// #define USE_VECTOR
+
+bool vowel(wchar_t c)
+{
+    wstring s = L"аеёиоуыэюяАЕЁИОУЫЭЮЯ";
+    return s.find(c) != wstring::npos;
+}
+
+bool consonant(wchar_t c)
+{
+    wstring s = L"бвгджзйклмнпрстфхцчшщБВГДЖЗЙКЛМНПРСТФХЦЧШЩ";
+    return s.find(c) != wstring::npos;
+}
+
+// Для раскраски: строчные и прописные буквы считаются одной буквой.
+bool sameLetter(wchar_t a, wchar_t b)
+{
+    if (a == b)
+        return true;
+
+    if ((a >= L'а' && a <= L'я') && (b == a - L'а' + L'А'))
+        return true;
+
+    if ((a >= L'А' && a <= L'Я') && (b == a - L'А' + L'а'))
+        return true;
+
+    if ((a == L'ё' && b == L'Ё') || (a == L'Ё' && b == L'ё'))
+        return true;
+
+    return false;
+}
+
+int getRow(wchar_t c)
+{
+    if (vowel(c)) return 0;
+    if (consonant(c)) return 1;
+    if (c >= L'0' && c <= L'9') return 2;
+    if (c != L'@') return 3;
+    return -1;
+}
+
+void setColor(int color)
+{
+#ifdef _WIN32
+    HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
+    SetConsoleTextAttribute(h, color);
+#else
+    const wchar_t* code = L"\033[0m";
+    if (color == 31) code = L"\033[31m";
+    else if (color == 32) code = L"\033[32m";
+    else if (color == 33) code = L"\033[33m";
+    else if (color == 34) code = L"\033[34m";
+    wcout << code;
+#endif
+}
+
+void resetColor()
+{
+#ifdef _WIN32
+    HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
+    SetConsoleTextAttribute(h, 7);
+#else
+    wcout << L"\033[0m";
+#endif
+}
+
+int main()
+{
+#ifdef _WIN32
+    SetConsoleCP(CP_UTF8);
+    SetConsoleOutputCP(CP_UTF8);
+#endif
+
+    wstring str;
+    wcout << L"Введите строку (не более 50 символов, без латиницы): ";
+    getline(wcin, str);
+
+    if (str.length() > 50)
+    {
+        wcout << L"Ошибка: строка содержит больше 50 символов.\n";
+        return 1;
+    }
+
+    wcout << L"\nЗубчатый массив:\n";
+
+#ifdef USE_VECTOR
+    vector<vector<wchar_t>> a(4);
+
+    for (wchar_t c : str)
+    {
+        int row = getRow(c);
+        if (row == -1) continue;
+
+        bool exists = false;
+        for (wchar_t x : a[row])
+        {
+            if (x == c)
+            {
+                exists = true;
+                break;
+            }
+        }
+
+        if (!exists)
+            a[row].push_back(c);
+    }
+
+    const wchar_t* names[4] = { L"Гласные: ", L"Согласные: ", L"Цифры: ", L"Знаки: " };
+    for (int i = 0; i < 4; ++i)
+    {
+        wcout << names[i];
+        for (wchar_t c : a[i]) wcout << c << L' ';
+        wcout << L'\n';
+    }
+
+    str += L"+123АБВ";
+    wcout << L"\nРезультирующая строка: ";
+
+    for (wchar_t c : str)
+    {
+        int row = -1;
+        for (int i = 0; i < 4 && row == -1; ++i)
+            for (wchar_t x : a[i])
+                if (sameLetter(x, c)) { row = i; break; }
+
+        if (row == 0) setColor(31);
+        else if (row == 1) setColor(34);
+        else if (row == 2) setColor(32);
+        else if (row == 3) setColor(33);
+
+        wcout << c;
+        resetColor();
+    }
+    wcout << L'\n';
+
+#else
+    wchar_t* b[4] = { nullptr, nullptr, nullptr, nullptr };
+    int size[4] = { 0, 0, 0, 0 };
+
+    for (wchar_t c : str)
+    {
+        int row = getRow(c);
+        if (row == -1) continue;
+
+        bool exists = false;
+        for (int i = 0; i < size[row]; ++i)
+        {
+            if (b[row][i] == c)
+            {
+                exists = true;
+                break;
+            }
+        }
+
+        if (!exists)
+        {
+            wchar_t* temp = (wchar_t*)realloc(b[row], (size[row] + 1) * sizeof(wchar_t));
+            if (temp == nullptr)
+            {
+                for (int i = 0; i < 4; ++i) free(b[i]);
+                wcout << L"Ошибка выделения памяти.\n";
+                return 1;
+            }
+            b[row] = temp;
+            b[row][size[row]] = c;
+            ++size[row];
+        }
+    }
+
+    const wchar_t* names[4] = { L"Гласные: ", L"Согласные: ", L"Цифры: ", L"Знаки: " };
+    for (int i = 0; i < 4; ++i)
+    {
+        wcout << names[i];
+        for (int j = 0; j < size[i]; ++j) wcout << b[i][j] << L' ';
+        wcout << L'\n';
+    }
+
+    str += L"+123АБВ";
+    wcout << L"\nРезультирующая строка: ";
+
+    for (wchar_t c : str)
+    {
+        int row = -1;
+        for (int i = 0; i < 4 && row == -1; ++i)
+            for (int j = 0; j < size[i]; ++j)
+                if (sameLetter(b[i][j], c)) { row = i; break; }
+
+        if (row == 0) setColor(31);
+        else if (row == 1) setColor(34);
+        else if (row == 2) setColor(32);
+        else if (row == 3) setColor(33);
+
+        wcout << c;
+        resetColor();
+    }
+    wcout << L'\n';
+
+    for (int i = 0; i < 4; ++i)
+        free(b[i]);
+#endif
+
+    return 0;
+}
