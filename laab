@@ -1,0 +1,26 @@
+bool sameLetter(wchar_t a, wchar_t b)
+{
+    if (a == b)
+        return true;
+
+    if ((a >= L'а' && a <= L'я') && (b == a - L'а' + L'А'))
+        return true;
+
+    if ((a >= L'А' && a <= L'Я') && (b == a - L'А' + L'а'))
+        return true;
+
+    if (a == L'ё' && b == L'Ё')
+        return true;
+
+    if (a == L'Ё' && b == L'ё')
+        return true;
+
+    return false;
+}
+
+
+if (sameLetter(b[i][j], c))
+{
+    row = i;
+    break;
+}
