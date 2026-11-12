@@ -1,0 +1,602 @@
+#include <QApplication>
+#include <QMainWindow>
+#include <QWidget>
+#include <QPainter>
+#include <QPen>
+#include <QBrush>
+#include <QLabel>
+#include <QPushButton>
+#include <QComboBox>
+#include <QTableWidget>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QMessageBox>
+#include <QFileDialog>
+#include <QTextStream>
+#include <QHeaderView>
+#include <QGroupBox>
+#include <QSplitter>
+#include <QPixmap>
+#include <QFile>
+#include <QFont>
+#include <QPointF>
+#include <QColor>
+#include <QStringList>
+#include <vector>
+#include <string>
+
+#include "graph_core.h"
+
+// Виджет для отображения карты и графа.
+class MapWidget : public QWidget {
+public:
+    explicit MapWidget(QWidget* parent = nullptr)
+        : QWidget(parent) {
+
+        setMinimumSize(800, 500);
+
+        map_ = QPixmap("map.png");
+
+        // Координаты вершин на карте.
+        points_ = {
+            {31,59},{85,47},{201,38},{299,31},{454,39},
+            {611,37},{609,100},{765,99},{883,101},{63,129},
+            {857,129},{151,134},{187,135},{27,196},{135,249},
+            {183,257},{49,309},{85,319},{51,347},{435,387},
+            {567,409},{613,417},{93,419},{699,430},{671,503}
+        };
+    }
+
+    void setGraph(const RoadGraph* g) {
+        graph_ = g;
+        update();
+    }
+
+    void setRoute(const std::vector<int>& p) {
+        route_ = p;
+        update();
+    }
+
+protected:
+    void paintEvent(QPaintEvent*) override {
+        QPainter painter(this);
+        painter.setRenderHint(QPainter::Antialiasing);
+
+        if (!map_.isNull()) {
+            QSize target = size();
+
+            QPixmap scaled = map_.scaled(
+                target,
+                Qt::KeepAspectRatio,
+                Qt::SmoothTransformation
+            );
+
+            double sx = double(scaled.width()) / 905.0;
+            double sy = double(scaled.height()) / 519.0;
+
+            double ox = (width() - scaled.width()) / 2.0;
+            double oy = (height() - scaled.height()) / 2.0;
+
+            painter.drawPixmap(QPointF(ox, oy), scaled);
+
+            if (!graph_)
+                return;
+
+            auto pos = [&](int v) {
+                return QPointF(
+                    ox + points_[v].x() * sx,
+                    oy + points_[v].y() * sy
+                );
+            };
+
+            // Отображение рёбер.
+            for (int a = 0; a < RoadGraph::N; ++a) {
+                for (int b = a + 1; b < RoadGraph::N; ++b) {
+
+                    if (!graph_->hasEdge(a, b))
+                        continue;
+
+                    QColor color = edgeColor(graph_->traffic[a][b]);
+
+                    bool onRoute = false;
+
+                    for (std::size_t k = 1; k < route_.size(); ++k) {
+                        if ((route_[k - 1] == a && route_[k] == b) ||
+                            (route_[k - 1] == b && route_[k] == a)) {
+                            onRoute = true;
+                        }
+                    }
+
+                    QPen pen(
+                        onRoute ? QColor(30, 70, 230) : color,
+                        onRoute ? 6 : 4
+                    );
+
+                    painter.setPen(pen);
+
+                    QPointF p1 = pos(a);
+                    QPointF p2 = pos(b);
+
+                    painter.drawLine(p1, p2);
+
+                    QPointF mid = (p1 + p2) / 2.0;
+
+                    QString label = QString("%1(%2)")
+                        .arg(graph_->adjacency[a][b])
+                        .arg(QString::fromStdString(
+                            RoadGraph::number(graph_->cost(a, b))
+                        ));
+
+                    painter.setPen(Qt::black);
+                    painter.setBrush(QColor(255, 255, 255, 210));
+
+                    QRectF box(
+                        mid.x() - 22,
+                        mid.y() - 12,
+                        44,
+                        20
+                    );
+
+                    painter.drawRoundedRect(box, 4, 4);
+                    painter.drawText(box, Qt::AlignCenter, label);
+                }
+            }
+
+            // Отображение вершин.
+            for (int i = 0; i < RoadGraph::N; ++i) {
+                QPointF p = pos(i);
+
+                painter.setPen(QPen(Qt::black, 2));
+
+                painter.setBrush(
+                    routeContains(i)
+                    ? QColor(90, 140, 255)
+                    : QColor(250, 250, 250)
+                );
+
+                painter.drawEllipse(p, 10, 10);
+
+                painter.setPen(Qt::black);
+                painter.setFont(QFont("Arial", 8, QFont::Bold));
+
+                painter.drawText(
+                    QRectF(p.x() - 8, p.y() - 8, 16, 16),
+                    Qt::AlignCenter,
+                    QString::number(i + 1)
+                );
+            }
+        }
+        else {
+            painter.drawText(
+                rect(),
+                Qt::AlignCenter,
+                "Не найден файл map.png"
+            );
+        }
+    }
+
+private:
+    const RoadGraph* graph_ = nullptr;
+
+    QPixmap map_;
+
+    std::vector<QPointF> points_;
+    std::vector<int> route_;
+
+    bool routeContains(int v) const {
+        for (int x : route_) {
+            if (x == v)
+                return true;
+        }
+
+        return false;
+    }
+
+    static QColor edgeColor(double k) {
+        if (k <= 0.8)
+            return QColor(0, 170, 65);
+
+        if (k <= 1.2)
+            return QColor(245, 145, 0);
+
+        if (k <= 1.9)
+            return QColor(230, 35, 45);
+
+        return QColor(150, 50, 170);
+    }
+};
+
+
+// Главное окно программы.
+class MainWindow : public QMainWindow {
+public:
+    MainWindow() {
+        setWindowTitle(
+            "Лабораторная работа №4 — Графы и маршруты — Вариант 2"
+        );
+
+        resize(1450, 900);
+
+        auto* central = new QWidget;
+        auto* root = new QVBoxLayout(central);
+
+        auto* top = new QHBoxLayout;
+
+        from_ = new QComboBox;
+        to_ = new QComboBox;
+
+        for (int i = 0; i < RoadGraph::N; ++i) {
+            QString name = QString("Точка %1").arg(i + 1);
+
+            from_->addItem(name, i);
+            to_->addItem(name, i);
+        }
+
+        auto* routeButton =
+            new QPushButton("Построить минимальный маршрут");
+
+        auto* trafficButton =
+            new QPushButton("Сымитировать загруженность");
+
+        auto* resetButton =
+            new QPushButton("Восстановить исходный граф");
+
+        top->addWidget(new QLabel("Начало:"));
+        top->addWidget(from_);
+
+        top->addWidget(new QLabel("Конец:"));
+        top->addWidget(to_);
+
+        top->addWidget(routeButton);
+        top->addWidget(trafficButton);
+        top->addWidget(resetButton);
+
+        root->addLayout(top);
+
+        auto* splitter = new QSplitter(Qt::Horizontal);
+
+        mapView_ = new MapWidget;
+
+        splitter->addWidget(mapView_);
+
+        auto* right = new QWidget;
+        auto* rightLayout = new QVBoxLayout(right);
+
+        status_ = new QLabel(
+            "Граф загружен. Выберите две разные точки."
+        );
+
+        status_->setWordWrap(true);
+
+        result_ = new QLabel("Маршрут: —");
+        result_->setWordWrap(true);
+
+        // Таблица матрицы смежности.
+        matrix_ = new QTableWidget(
+            RoadGraph::N,
+            RoadGraph::N
+        );
+
+        matrix_->setEditTriggers(
+            QAbstractItemView::NoEditTriggers
+        );
+
+        matrix_->horizontalHeader()->setSectionResizeMode(
+            QHeaderView::ResizeToContents
+        );
+
+        matrix_->verticalHeader()->setSectionResizeMode(
+            QHeaderView::ResizeToContents
+        );
+
+        matrix_->setMinimumWidth(520);
+
+        auto* matrixBox = new QGroupBox(
+            "Матрица смежности (длина ребра, 0 — нет ребра)"
+        );
+
+        auto* mb = new QVBoxLayout(matrixBox);
+        mb->addWidget(matrix_);
+
+        rightLayout->addWidget(status_);
+        rightLayout->addWidget(result_);
+        rightLayout->addWidget(matrixBox, 1);
+
+        // Блок удаления ребра.
+        auto* removeBox = new QGroupBox(
+            "Удаление дороги (ребра)"
+        );
+
+        auto* removeLayout = new QHBoxLayout(removeBox);
+
+        edgeA_ = new QComboBox;
+        edgeB_ = new QComboBox;
+
+        for (int i = 0; i < RoadGraph::N; ++i) {
+            edgeA_->addItem(QString::number(i + 1), i);
+            edgeB_->addItem(QString::number(i + 1), i);
+        }
+
+        auto* removeButton =
+            new QPushButton("Удалить ребро");
+
+        removeLayout->addWidget(new QLabel("Вершина 1:"));
+        removeLayout->addWidget(edgeA_);
+
+        removeLayout->addWidget(new QLabel("Вершина 2:"));
+        removeLayout->addWidget(edgeB_);
+
+        removeLayout->addWidget(removeButton);
+
+        rightLayout->addWidget(removeBox);
+
+        auto* saveButton =
+            new QPushButton("Сохранить маршрут в файл");
+
+        rightLayout->addWidget(saveButton);
+
+        splitter->addWidget(right);
+
+        splitter->setStretchFactor(0, 3);
+        splitter->setStretchFactor(1, 2);
+
+        root->addWidget(splitter, 1);
+
+        setCentralWidget(central);
+
+        // Построение маршрута.
+        connect(routeButton, &QPushButton::clicked, this, [this] {
+            buildRoute();
+        });
+
+        // Изменение загруженности дорог.
+        connect(trafficButton, &QPushButton::clicked, this, [this] {
+            graph_.randomizeTraffic();
+
+            mapView_->setGraph(&graph_);
+
+            updateMatrix();
+
+            status_->setText(
+                "Загруженность дорог изменена. "
+                "Цвет и стоимость рёбер обновлены."
+            );
+
+            route_.clear();
+            mapView_->setRoute(route_);
+        });
+
+        // Восстановление графа.
+        connect(resetButton, &QPushButton::clicked, this, [this] {
+            graph_.reset();
+
+            route_.clear();
+
+            mapView_->setGraph(&graph_);
+            mapView_->setRoute(route_);
+
+            updateMatrix();
+
+            status_->setText(
+                "Исходный граф восстановлен. "
+                "Все дороги снова доступны."
+            );
+        });
+
+        // Удаление выбранного ребра.
+        connect(removeButton, &QPushButton::clicked, this, [this] {
+            int a = edgeA_->currentData().toInt();
+            int b = edgeB_->currentData().toInt();
+
+            if (a == b) {
+                QMessageBox::warning(
+                    this,
+                    "Ошибка",
+                    "Нельзя удалить ребро из вершины в неё же. "
+                    "Выберите две разные вершины."
+                );
+
+                return;
+            }
+
+            if (!graph_.removeEdge(a, b)) {
+                QMessageBox::warning(
+                    this,
+                    "Ошибка",
+                    "Между выбранными вершинами нет ребра."
+                );
+
+                return;
+            }
+
+            route_.clear();
+
+            mapView_->setGraph(&graph_);
+            mapView_->setRoute(route_);
+
+            updateMatrix();
+
+            status_->setText(
+                QString("Ребро %1 — %2 удалено.")
+                    .arg(a + 1)
+                    .arg(b + 1)
+            );
+        });
+
+        // Сохранение маршрута.
+        connect(saveButton, &QPushButton::clicked, this, [this] {
+            saveRoute();
+        });
+
+        mapView_->setGraph(&graph_);
+
+        updateMatrix();
+    }
+
+private:
+    RoadGraph graph_;
+
+    MapWidget* mapView_ = nullptr;
+
+    QComboBox *from_ = nullptr;
+    QComboBox *to_ = nullptr;
+
+    QComboBox *edgeA_ = nullptr;
+    QComboBox *edgeB_ = nullptr;
+
+    QLabel* status_ = nullptr;
+    QLabel* result_ = nullptr;
+
+    QTableWidget* matrix_ = nullptr;
+
+    std::vector<int> route_;
+
+    // Обновление матрицы смежности.
+    void updateMatrix() {
+        for (int i = 0; i < RoadGraph::N; ++i) {
+            matrix_->setVerticalHeaderItem(
+                i,
+                new QTableWidgetItem(QString::number(i + 1))
+            );
+
+            matrix_->setHorizontalHeaderItem(
+                i,
+                new QTableWidgetItem(QString::number(i + 1))
+            );
+
+            for (int j = 0; j < RoadGraph::N; ++j) {
+                auto* item = new QTableWidgetItem(
+                    QString::number(graph_.adjacency[i][j])
+                );
+
+                item->setTextAlignment(Qt::AlignCenter);
+
+                if (i == j) {
+                    item->setBackground(QColor(230, 230, 230));
+                }
+
+                matrix_->setItem(i, j, item);
+            }
+        }
+    }
+
+    // Построение кратчайшего маршрута.
+    void buildRoute() {
+        int s = from_->currentData().toInt();
+        int t = to_->currentData().toInt();
+
+        std::string error;
+
+        double total = 0;
+
+        std::vector<int> path;
+
+        if (!graph_.shortestPath(
+            s, t, path, total, error
+        )) {
+            route_.clear();
+
+            mapView_->setRoute(route_);
+
+            QMessageBox::warning(
+                this,
+                "Маршрут не построен",
+                QString::fromUtf8(error.c_str())
+            );
+
+            status_->setText(
+                QString::fromUtf8(error.c_str())
+            );
+
+            result_->setText("Маршрут: отсутствует");
+
+            return;
+        }
+
+        route_ = path;
+
+        mapView_->setRoute(route_);
+
+        QStringList names;
+
+        for (int v : path) {
+            names << QString::number(v + 1);
+        }
+
+        result_->setText(
+            "Маршрут: " + names.join(" → ") +
+            " | Стоимость с учётом загруженности: " +
+            QString::fromStdString(
+                RoadGraph::number(total)
+            )
+        );
+
+        status_->setText(
+            "Минимальный маршрут найден и выделен синим цветом."
+        );
+    }
+
+    // Сохранение найденного маршрута.
+    void saveRoute() {
+        if (route_.empty()) {
+            QMessageBox::warning(
+                this,
+                "Нет маршрута",
+                "Сначала постройте маршрут."
+            );
+
+            return;
+        }
+
+        QString path = QFileDialog::getSaveFileName(
+            this,
+            "Сохранить маршрут",
+            "route.txt",
+            "Текстовые файлы (*.txt)"
+        );
+
+        if (path.isEmpty())
+            return;
+
+        QFile f(path);
+
+        if (!f.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            QMessageBox::critical(
+                this,
+                "Ошибка",
+                "Не удалось сохранить файл."
+            );
+
+            return;
+        }
+
+        QTextStream out(&f);
+
+        for (std::size_t i = 0; i < route_.size(); ++i) {
+            if (i)
+                out << " -> ";
+
+            out << route_[i] + 1;
+        }
+
+        out << '\n';
+
+        QMessageBox::information(
+            this,
+            "Готово",
+            "Маршрут сохранён."
+        );
+    }
+};
+
+
+// Точка входа в программу.
+int main(int argc, char* argv[]) {
+    QApplication app(argc, argv);
+
+    MainWindow w;
+
+    w.show();
+
+    return app.exec();
+}
